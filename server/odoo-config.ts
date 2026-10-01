@@ -4,13 +4,14 @@ export function getOdooConfigFromEnvironment(): OdooConfig {
   const url = process.env.ODOO_URL?.trim();
   const database = process.env.ODOO_DATABASE?.trim();
   const username = process.env.ODOO_USERNAME?.trim();
-  const password = process.env.ODOO_PASSWORD;
+  // An Odoo API key is preferred. ODOO_PASSWORD remains supported as a fallback.
+  const apiKey = process.env.ODOO_API_KEY?.trim() || process.env.ODOO_PASSWORD;
 
   const missing = [
     !url && "ODOO_URL",
     !database && "ODOO_DATABASE",
     !username && "ODOO_USERNAME",
-    !password && "ODOO_PASSWORD",
+    !apiKey && "ODOO_API_KEY",
   ].filter(Boolean);
 
   if (missing.length > 0) {
@@ -38,7 +39,7 @@ export function getOdooConfigFromEnvironment(): OdooConfig {
     url: parsedUrl.toString().replace(/\/$/, ""),
     database: database!,
     username: username!,
-    apiKey: password!,
+    apiKey: apiKey!,
     isActive: 1,
     lastTested: null,
     createdAt: new Date(),

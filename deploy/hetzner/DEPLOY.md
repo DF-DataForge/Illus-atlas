@@ -15,7 +15,8 @@ on or deploy to a remote machine.
   `/api` paths, regardless of letter case (including Odoo configuration/admin
   and BESS routes), are denied at the public proxy.
 - Live sales points use the backend-only `ODOO_URL`, `ODOO_DATABASE`,
-  `ODOO_USERNAME`, and `ODOO_PASSWORD` settings. The verkooppunt label/filter
+  `ODOO_USERNAME`, and `ODOO_API_KEY` settings (an Odoo API key;
+  `ODOO_PASSWORD` is still accepted as a fallback). The verkooppunt label/filter
   is fixed by the application; there is no deployment setting for changing it.
 - `DATABASE_URL` is optional and is only for the legacy BESS/database API; it
   is not required by the public map. Do not provision or initialize that
@@ -156,7 +157,7 @@ privately in the editor; this template intentionally contains no credentials:
 ODOO_URL=
 ODOO_DATABASE=
 ODOO_USERNAME=
-ODOO_PASSWORD=
+ODOO_API_KEY=
 # Optional only when explicitly enabling the legacy BESS/database API:
 # DATABASE_URL=
 # SESSION_SECRET is currently unused.

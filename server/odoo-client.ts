@@ -72,7 +72,6 @@ interface OdooPartnerRaw {
 export class OdooClient {
   private config: OdooConfig;
   private uid?: number;
-  private cookies: string[] = [];
 
   constructor(config: OdooConfig) {
     this.config = config;
@@ -89,140 +88,91 @@ export class OdooClient {
     return normalized;
   }
 
-  async authenticate(): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Calls Odoo's external JSON-RPC endpoint (/jsonrpc). Unlike the web-session
+   * endpoint, this accepts an Odoo API key in place of the user's password.
+   */
+  private async jsonRpc(service: string, method: string, args: unknown[]): Promise<any> {
     const baseUrl = this.normalizeUrl(this.config.url);
-    const authUrl = `${baseUrl}/web/session/authenticate`;
-    
-    console.log(`[Odoo] Attempting authentication to: ${authUrl}`);
-    console.log(`[Odoo] Database: ${this.config.database}`);
-    
-    try {
-      const response = await fetch(authUrl, {
-        method: 'POST',
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          id: 1,
-          params: {
-            db: this.config.database,
-            login: this.config.username,
-            password: this.config.apiKey,
-          },
-        }),
-      });
-
-      console.log(`[Odoo] Response status: ${response.status}`);
-      
-      // Capture cookies from the response
-      const setCookieHeaders = response.headers.getSetCookie?.() || [];
-      if (setCookieHeaders.length > 0) {
-        this.cookies = setCookieHeaders.map(cookie => cookie.split(';')[0]);
-        console.log(`[Odoo] Captured ${this.cookies.length} cookies`);
-      }
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error(`[Odoo] Non-JSON response received. Content-Type: ${contentType}`);
-        console.error(`[Odoo] Response preview: ${text.substring(0, 200)}...`);
-        return { 
-          success: false, 
-          error: `Odoo returned HTML instead of JSON. Make sure the URL is the base Odoo URL (e.g., https://your-instance.odoo.com) without /odoo or other paths.`
-        };
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        console.error(`[Odoo] JSON-RPC error:`, data.error);
-        return { 
-          success: false, 
-          error: data.error.data?.message || data.error.message || 'Unknown Odoo error' 
-        };
-      }
-      
-      if (data.result && data.result.uid) {
-        this.uid = data.result.uid;
-        console.log(`[Odoo] Authentication successful. UID: ${this.uid}`);
-        return { success: true };
-      }
-      
-      if (data.result && data.result.uid === false) {
-        console.error(`[Odoo] Authentication failed: Invalid credentials`);
-        return { success: false, error: 'Invalid username or password' };
-      }
-      
-      console.error(`[Odoo] Unexpected response structure:`, data);
-      return { success: false, error: 'Unexpected response from Odoo' };
-    } catch (error) {
-      console.error('[Odoo] Authentication error:', error);
-      if (error instanceof SyntaxError) {
-        return { 
-          success: false, 
-          error: 'Received invalid response from server. Check that the URL is correct and accessible.' 
-        };
-      }
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
-      };
-    }
-  }
-
-  async testConnection(): Promise<{ success: boolean; error?: string }> {
-    return await this.authenticate();
-  }
-
-  private async callOdoo(model: string, method: string, args: any[], kwargs: any = {}): Promise<any> {
-    const baseUrl = this.normalizeUrl(this.config.url);
-    
-    const headers: Record<string, string> = { 
-      'Content-Type': 'application/json',
-    };
-    
-    // Add cookies to request
-    if (this.cookies.length > 0) {
-      headers['Cookie'] = this.cookies.join('; ');
-    }
-    
-    console.log(`[Odoo] Calling ${model}.${method} with cookies: ${this.cookies.length > 0 ? 'yes' : 'no'}`);
-    
-    const response = await fetch(`${baseUrl}/web/dataset/call_kw`, {
+    const response = await fetch(`${baseUrl}/jsonrpc`, {
       method: 'POST',
       signal: AbortSignal.timeout(10000),
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'call',
         id: Math.floor(Math.random() * 1000000),
-        params: {
-          model,
-          method,
-          args,
-          kwargs,
-        },
+        params: { service, method, args },
       }),
     });
 
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
-      console.error(`[Odoo] Non-JSON response: ${text.substring(0, 200)}`);
-      throw new Error('Non-JSON response from Odoo');
+      console.error(`[Odoo] Non-JSON response (${response.status}): ${text.substring(0, 200)}`);
+      throw new Error(
+        'Odoo returned a non-JSON response. Make sure ODOO_URL is the base Odoo URL (e.g., https://your-instance.odoo.com) without /odoo or other paths.',
+      );
     }
 
     const data = await response.json();
-    
     if (data.error) {
-      console.error(`[Odoo] Error calling ${model}.${method}:`, data.error);
+      console.error(`[Odoo] JSON-RPC error in ${service}.${method}:`, data.error.message);
       throw new Error(data.error.data?.message || data.error.message || 'Odoo API error');
     }
-    
     return data.result;
+  }
+
+  async authenticate(): Promise<{ success: boolean; error?: string }> {
+    if (this.uid) return { success: true };
+
+    console.log(`[Odoo] Authenticating via ${this.normalizeUrl(this.config.url)}/jsonrpc (database: ${this.config.database})`);
+    try {
+      const uid = await this.jsonRpc('common', 'authenticate', [
+        this.config.database,
+        this.config.username,
+        this.config.apiKey,
+        {},
+      ]);
+
+      if (typeof uid === 'number' && uid > 0) {
+        this.uid = uid;
+        console.log(`[Odoo] Authentication successful. UID: ${uid}`);
+        return { success: true };
+      }
+
+      console.error('[Odoo] Authentication failed: invalid credentials');
+      return { success: false, error: 'Invalid Odoo username or API key' };
+    } catch (error) {
+      console.error('[Odoo] Authentication error:', error instanceof Error ? error.message : error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  async testConnection(): Promise<{ success: boolean; error?: string }> {
+    this.uid = undefined;
+    return await this.authenticate();
+  }
+
+  private async callOdoo(model: string, method: string, args: any[], kwargs: any = {}): Promise<any> {
+    if (!this.uid) {
+      const authResult = await this.authenticate();
+      if (!authResult.success) throw new Error(`Authentication failed: ${authResult.error}`);
+    }
+
+    console.log(`[Odoo] Calling ${model}.${method}`);
+    return await this.jsonRpc('object', 'execute_kw', [
+      this.config.database,
+      this.uid,
+      this.config.apiKey,
+      model,
+      method,
+      args,
+      kwargs,
+    ]);
   }
 
   async getModelFields(model: string): Promise<Record<string, any>> {
@@ -298,7 +248,6 @@ export class OdooClient {
   }
 
   async fetchBessSystems(): Promise<OdooBessRecord[]> {
-    // Always authenticate first to get fresh cookies
     const authResult = await this.authenticate();
     if (!authResult.success) {
       console.error('[Odoo] Cannot fetch systems - authentication failed:', authResult.error);
