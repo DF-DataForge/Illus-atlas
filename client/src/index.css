@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Cormorant Garamond', serif;
+
+  --color-background: hsl(40 33% 97%); /* warm cream */
+  --color-foreground: hsl(60 9% 16%); /* dark olive charcoal */
+
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(60 9% 16%);
+
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(60 9% 16%);
+
+  --color-primary: hsl(36 42% 50%); /* illus gold */
+  --color-primary-foreground: hsl(0 0% 100%);
+
+  --color-secondary: hsl(40 22% 92%);
+  --color-secondary-foreground: hsl(60 9% 16%);
+
+  --color-muted: hsl(40 22% 93%);
+  --color-muted-foreground: hsl(60 6% 42%);
+
+  --color-accent: hsl(36 42% 50%);
+  --color-accent-foreground: hsl(0 0% 100%);
+
+  --color-destructive: hsl(0 70% 45%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  --color-border: hsl(40 18% 86%);
+  --color-input: hsl(40 18% 86%);
+  --color-ring: hsl(36 42% 50%);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary;
+  }
+  
+  /* Leaflet Light Mode Overrides */
+  .leaflet-container {
+    background: #eef0f1 !important;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Soft, monochrome basemap to match the illus brand */
+  .leaflet-tile-pane {
+    filter: grayscale(1) contrast(0.95) brightness(1.03);
+  }
+  
+  .leaflet-popup-content-wrapper {
+    @apply bg-card/90 text-foreground border border-border/50 shadow-xl rounded-lg backdrop-blur-md;
+  }
+  
+  .leaflet-popup-tip {
+    @apply bg-card;
+  }
+}
+
+.font-display {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.project-card-in {
+  animation: cardIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
