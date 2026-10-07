@@ -170,8 +170,7 @@ export function MapView({ embedded = false }: { embedded?: boolean } = {}) {
         zoom={7}
         minZoom={3}
         maxZoom={15}
-        // In an iframe, wheel-zoom would hijack scrolling of the host page; use the +/- buttons or pinch.
-        scrollWheelZoom={!embedded}
+        scrollWheelZoom
         className="h-full w-full"
         zoomControl
       >

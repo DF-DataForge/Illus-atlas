@@ -4,7 +4,7 @@ The app offers two pages made for iframes:
 
 | Page | Shows |
 |---|---|
-| `/embed/map` | Only the map, filling the whole iframe. Mouse-wheel zoom is off so it does not hijack page scrolling; use the +/- buttons or pinch. |
+| `/embed/map` | Only the map, filling the whole iframe. Zoom with the mouse wheel, the +/- buttons or pinch. |
 | `/embed/list` | Only the contact cards. Reports its height to the host page so the iframe grows to fit. Each card with a map position gets a "Toon op kaart" button. |
 
 The full page at `/` is unchanged.
