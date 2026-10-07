@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, MapPin, RefreshCw, X } from "lucide-react";
 import { EMBED_MESSAGE, isEmbedMessage, postToParent } from "@/lib/embed";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { getSalesPoints } from "@/lib/api";
 import type { SalesPoint } from "@shared/schema";
 import illusMark from "@assets/Illus_logo_1783008707544.png";
@@ -37,6 +38,30 @@ function MapFitter({ points }: { points: SalesPoint[] }) {
     const bounds = latLngBounds(points.map((point) => [point.latitude, point.longitude]));
     map.fitBounds(bounds, { padding: [55, 55], maxZoom: 9 });
   }, [map, points]);
+
+  return null;
+}
+
+/**
+ * Switches the map between interactive (zoom/pan) and static. While static, the map
+ * ignores wheel and touch gestures so the surrounding page keeps scrolling.
+ */
+function MapInteraction({ enabled }: { enabled: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const handlers = [
+      map.dragging,
+      map.touchZoom,
+      map.doubleClickZoom,
+      map.scrollWheelZoom,
+      map.boxZoom,
+      map.keyboard,
+    ];
+    handlers.forEach((handler) => (enabled ? handler?.enable() : handler?.disable()));
+    if (enabled) map.zoomControl?.addTo(map);
+    else map.zoomControl?.remove();
+  }, [map, enabled]);
 
   return null;
 }
@@ -136,6 +161,7 @@ export function MapView({ embedded = false }: { embedded?: boolean } = {}) {
     [points],
   );
   const [selected, setSelected] = useState<SalesPoint | null>(null);
+  const [zoomEnabled, setZoomEnabled] = useState(false);
   const icons = useMemo(
     () => new Map(mappedPoints.map((point) => [point.id, markerIcon(selected?.id === point.id)])),
     [mappedPoints, selected?.id],
@@ -170,10 +196,16 @@ export function MapView({ embedded = false }: { embedded?: boolean } = {}) {
         zoom={7}
         minZoom={3}
         maxZoom={15}
-        scrollWheelZoom
+        dragging={false}
+        touchZoom={false}
+        doubleClickZoom={false}
+        scrollWheelZoom={false}
+        boxZoom={false}
+        keyboard={false}
         className="h-full w-full"
         zoomControl
       >
+        <MapInteraction enabled={zoomEnabled} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Geocoding: <a href="https://photon.komoot.io">Photon</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -189,6 +221,14 @@ export function MapView({ embedded = false }: { embedded?: boolean } = {}) {
           />
         ))}
       </MapContainer>
+
+      <label
+        className="absolute right-4 top-4 z-[1000] flex cursor-pointer select-none items-center gap-2 rounded-sm bg-white/90 px-3 py-2 text-xs text-[#37342f] shadow"
+        data-testid="toggle-map-zoom"
+      >
+        <Switch checked={zoomEnabled} onCheckedChange={setZoomEnabled} aria-label="Map zoom" />
+        Map zoom
+      </label>
 
       {selected && (
         <div className="absolute left-6 top-6 z-[1000]">
