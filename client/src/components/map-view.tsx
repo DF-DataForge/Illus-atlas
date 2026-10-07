@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { divIcon, latLngBounds, type Map as LeafletMap } from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
-import { ExternalLink, Loader2, MapPin, RefreshCw, X } from "lucide-react";
-import { EMBED_MESSAGE, isEmbedMessage, postToParent } from "@/lib/embed";
+import { ExternalLink, Loader2, RefreshCw, X } from "lucide-react";
+import { EMBED_MESSAGE, isEmbedMessage } from "@/lib/embed";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -88,12 +88,10 @@ function ExternalSelection({ points, onSelect }: { points: SalesPoint[]; onSelec
 function SalesPointCard({
   point,
   onClose,
-  onShowOnMap,
   floating = false,
 }: {
   point: SalesPoint;
   onClose?: () => void;
-  onShowOnMap?: () => void;
   floating?: boolean;
 }) {
   const website = normalizeWebsite(point.website);
@@ -133,18 +131,6 @@ function SalesPointCard({
           Bezoek de website
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
-      )}
-
-      {onShowOnMap && (
-        <button
-          type="button"
-          onClick={onShowOnMap}
-          className={`${website ? "ml-6" : ""} mt-7 inline-flex items-center gap-1 border-b border-[#77736c] pb-0.5 text-base hover:border-[#37342f]`}
-          data-testid={`button-show-on-map-${point.id}`}
-        >
-          <MapPin className="h-3.5 w-3.5" />
-          Toon op kaart
-        </button>
       )}
     </article>
   );
@@ -265,15 +251,7 @@ export function ProjectDirectory({ embedded = false }: { embedded?: boolean } = 
   return (
     <section className={embedded ? "" : "mt-8 pb-16 md:mt-12"} data-testid="section-sales-point-directory">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {points.map((point) => (
-          <SalesPointCard
-            key={point.id}
-            point={point}
-            onShowOnMap={embedded && hasMapPosition(point)
-              ? () => postToParent({ type: EMBED_MESSAGE.select, id: point.id })
-              : undefined}
-          />
-        ))}
+        {points.map((point) => <SalesPointCard key={point.id} point={point} />)}
       </div>
     </section>
   );

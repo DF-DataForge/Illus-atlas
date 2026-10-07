@@ -5,7 +5,7 @@ The app offers two pages made for iframes:
 | Page | Shows |
 |---|---|
 | `/embed/map` | Only the map, filling the whole iframe. Zoom with the mouse wheel, the +/- buttons or pinch. |
-| `/embed/list` | Only the contact cards. Reports its height to the host page so the iframe grows to fit. Each card with a map position gets a "Toon op kaart" button. |
+| `/embed/list` | Only the contact cards. Reports its height to the host page so the iframe grows to fit. |
 
 The full page at `/` is unchanged.
 
@@ -45,7 +45,7 @@ placed apart from each other; keep the script once, after both.
 ```
 
 The script is optional but recommended. Without it the list iframe keeps its
-fixed height (800px) and "Toon op kaart" does nothing.
+fixed height (800px).
 
 ## Messages
 
@@ -54,4 +54,4 @@ All messages are posted with `window.postMessage` and only contain public data.
 | `type` | From → to | Data |
 |---|---|---|
 | `illus-salespoints:height` | list → host | `height` in pixels |
-| `illus-salespoints:select` | list → host → map | `id` of the sales point to show |
+| `illus-salespoints:select` | host → map (optional) | `id` of the sales point to show |

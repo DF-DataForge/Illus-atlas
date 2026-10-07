@@ -6,7 +6,7 @@
 export const EMBED_MESSAGE = {
   /** list → host: the list iframe's content height in pixels ({ height }). */
   height: "illus-salespoints:height",
-  /** list → host → map: focus a sales point on the map ({ id }). */
+  /** host → map: focus a sales point on the map ({ id }); optional, not sent by the app itself. */
   select: "illus-salespoints:select",
 } as const;
 
