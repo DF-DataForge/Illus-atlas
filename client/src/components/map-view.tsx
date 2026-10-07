@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { divIcon, latLngBounds, type Map as LeafletMap } from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import { ExternalLink, Loader2, MapPin, RefreshCw, X } from "lucide-react";
+import { EMBED_MESSAGE, isEmbedMessage, postToParent } from "@/lib/embed";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { getSalesPoints } from "@/lib/api";
@@ -17,6 +18,11 @@ const markerIcon = (selected: boolean) =>
     iconSize: [46, 46],
     iconAnchor: [23, 23],
   });
+
+const hasMapPosition = (point: SalesPoint) =>
+  Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
+  && Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180
+  && !(point.latitude === 0 && point.longitude === 0);
 
 const normalizeWebsite = (website?: string) => {
   if (!website) return undefined;
@@ -35,13 +41,34 @@ function MapFitter({ points }: { points: SalesPoint[] }) {
   return null;
 }
 
+/** Lets the host page (iframe parent) select a sales point, e.g. from the list iframe. */
+function ExternalSelection({ points, onSelect }: { points: SalesPoint[]; onSelect: (point: SalesPoint) => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (!isEmbedMessage(event.data, EMBED_MESSAGE.select)) return;
+      const point = points.find((candidate) => candidate.id === Number(event.data.id));
+      if (!point) return;
+      onSelect(point);
+      map.flyTo([point.latitude, point.longitude], Math.max(map.getZoom(), 13), { duration: 0.8 });
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [map, points, onSelect]);
+
+  return null;
+}
+
 function SalesPointCard({
   point,
   onClose,
+  onShowOnMap,
   floating = false,
 }: {
   point: SalesPoint;
   onClose?: () => void;
+  onShowOnMap?: () => void;
   floating?: boolean;
 }) {
   const website = normalizeWebsite(point.website);
@@ -82,21 +109,30 @@ function SalesPointCard({
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       )}
+
+      {onShowOnMap && (
+        <button
+          type="button"
+          onClick={onShowOnMap}
+          className={`${website ? "ml-6" : ""} mt-7 inline-flex items-center gap-1 border-b border-[#77736c] pb-0.5 text-base hover:border-[#37342f]`}
+          data-testid={`button-show-on-map-${point.id}`}
+        >
+          <MapPin className="h-3.5 w-3.5" />
+          Toon op kaart
+        </button>
+      )}
     </article>
   );
 }
 
-export function MapView() {
+export function MapView({ embedded = false }: { embedded?: boolean } = {}) {
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["sales-points"],
     queryFn: getSalesPoints,
   });
   const points = data?.salesPoints ?? [];
   const mappedPoints = useMemo(
-    () => points.filter((point) =>
-      Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
-      && Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180
-      && !(point.latitude === 0 && point.longitude === 0)),
+    () => points.filter(hasMapPosition),
     [points],
   );
   const [selected, setSelected] = useState<SalesPoint | null>(null);
@@ -126,13 +162,16 @@ export function MapView() {
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl border border-border/50 bg-[#eef0f1] shadow-2xl">
+    <div
+      className={`relative h-full w-full overflow-hidden bg-[#eef0f1] ${embedded ? "" : "rounded-xl border border-border/50 shadow-2xl"}`}
+    >
       <MapContainer
         center={[50.85, 4.35]}
         zoom={7}
         minZoom={3}
         maxZoom={15}
-        scrollWheelZoom
+        // In an iframe, wheel-zoom would hijack scrolling of the host page; use the +/- buttons or pinch.
+        scrollWheelZoom={!embedded}
         className="h-full w-full"
         zoomControl
       >
@@ -141,6 +180,7 @@ export function MapView() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapFitter points={mappedPoints} />
+        <ExternalSelection points={mappedPoints} onSelect={setSelected} />
         {mappedPoints.map((point) => (
           <Marker
             key={point.id}
@@ -174,7 +214,7 @@ export function MapView() {
   );
 }
 
-export function ProjectDirectory() {
+export function ProjectDirectory({ embedded = false }: { embedded?: boolean } = {}) {
   const { data } = useQuery({
     queryKey: ["sales-points"],
     queryFn: getSalesPoints,
@@ -184,9 +224,17 @@ export function ProjectDirectory() {
   if (!points.length) return null;
 
   return (
-    <section className="mt-8 pb-16 md:mt-12" data-testid="section-sales-point-directory">
+    <section className={embedded ? "" : "mt-8 pb-16 md:mt-12"} data-testid="section-sales-point-directory">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {points.map((point) => <SalesPointCard key={point.id} point={point} />)}
+        {points.map((point) => (
+          <SalesPointCard
+            key={point.id}
+            point={point}
+            onShowOnMap={embedded && hasMapPosition(point)
+              ? () => postToParent({ type: EMBED_MESSAGE.select, id: point.id })
+              : undefined}
+          />
+        ))}
       </div>
     </section>
   );

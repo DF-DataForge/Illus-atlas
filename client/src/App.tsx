@@ -6,12 +6,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
+import EmbedMap from "@/pages/embed-map";
+import EmbedList from "@/pages/embed-list";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/settings" component={Settings} />
+      <Route path="/embed/map" component={EmbedMap} />
+      <Route path="/embed/list" component={EmbedList} />
       <Route component={NotFound} />
     </Switch>
   );

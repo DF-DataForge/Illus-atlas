@@ -20,3 +20,6 @@ social image URLs stay relative.
 For an external Ubuntu server deployment, see the
 [Hetzner deployment guide](deploy/hetzner/DEPLOY.md). It is a preparation guide;
 the host deployment itself must be performed and verified by the operator.
+
+To show the map and the contact list in two iframes on another website, see
+[docs/EMBED.md](docs/EMBED.md).
